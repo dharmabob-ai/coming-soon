@@ -101,16 +101,28 @@
 
 		// Signup Form.
 		(function() {
+
 		    // Vars.
-		    var $form = document.querySelectorAll('#signup-form')[0],
-		        $submit = document.querySelectorAll('#signup-form input[type="submit"]')[0],
+		    var $form = document.getElementById('signup-form'),
+		        $submit = $form.querySelector('input[type="submit"]'),
+		        $emailInput = $form.querySelector('#email'),
 		        $message;
 
-		    // Bail if addEventListener isn't supported.
-		    if (!('addEventListener' in $form))
-		        return;
+		    // IMPORTANT: Add your Web3Forms API key here.
+		    // This is safe because this code is never directly exposed to the browser's
+		    // view-source in its .js form if served correctly. However, for true
+		    // client-side security, a serverless function is better.
+		    // For a static site, this is the most direct method.
+		    // AN EVEN BETTER, more secure way is below the code block.
+		    const WEB3FORMS_API_KEY = "f8746abe-72e6-46e1-a87b-8b1b03aca0ae"; // <-- PASTE YOUR KEY HERE
 
-		    // Message.
+		    // Bail if form elements are missing.
+		    if (!$form || !$submit || !$emailInput) return;
+
+		    // Set the hidden API key value.
+		    document.getElementById('access_key').value = WEB3FORMS_API_KEY;
+
+		    // Message container.
 		    $message = document.createElement('span');
 		    $message.classList.add('message');
 		    $form.appendChild($message);
@@ -119,19 +131,17 @@
 		        $message.innerHTML = text;
 		        $message.classList.add(type);
 		        $message.classList.add('visible');
-
 		        window.setTimeout(function() {
 		            $message._hide();
-		        }, 3000);
+		        }, 5000); // Show message for 5 seconds
 		    };
-
 		    $message._hide = function() {
 		        $message.classList.remove('visible');
 		    };
 
 		    // Events.
-		    // Note: If you're *not* using AJAX, get rid of this event listener.
 		    $form.addEventListener('submit', function(event) {
+
 		        event.stopPropagation();
 		        event.preventDefault();
 
@@ -141,18 +151,36 @@
 		        // Disable submit.
 		        $submit.disabled = true;
 
-		        // Process form.
-		        // Note: For now, this will just display the disabled message.
-		        window.setTimeout(function() {
-		            // Reset form.
-		            $form.reset();
+		        // Process form with AJAX.
+		        const formData = new FormData($form);
 
-		            // Enable submit.
+		        fetch('https://api.web3forms.com/submit', {
+		            method: 'POST',
+		            body: formData
+		        })
+		        .then(async (response) => {
+		            let result = await response.json();
+		            if (response.status === 200) {
+		                $message._show('success', result.message || 'Thank you for signing up!');
+		            } else {
+		                $message._show('failure', result.message || 'Something went wrong. Please try again.');
+		            }
+		        })
+		        .catch((error) => {
+								$message._show('failure', 'Waiting list is currently disabled. Please try again later.');
+		            console.error('Submission error:', error);
+		        })
+		        .finally(() => {
+		            // Always re-enable the submit button and reset the form
 		            $submit.disabled = false;
+		            $form.reset();
+		            // Re-set the hidden values after reset
+		            document.getElementById('access_key').value = WEB3FORMS_API_KEY;
+		            document.getElementById('message').value = "This user wants to join the beta for Dharma Bob.";
+		        });
 
-		            // Show the "disabled" message.
-		            $message._show('failure', 'Waiting list is currently disabled. Please try again later.');
-		        }, 750);
-		    });
+		        });
+
 		})();
+
 })();
